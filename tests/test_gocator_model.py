@@ -14,6 +14,8 @@ class TestGocatorModel(unittest.TestCase):
 
     SUPPORTFILESPATH = os.path.join(os.path.dirname(__file__), 'support_files')
     SAMPLECFGPATH = os.path.join(SUPPORTFILESPATH, 'sample_config.cfg')
+    SAMPLEINPUTDATA = os.path.join(SUPPORTFILESPATH, 'sample_data.csv')
+    OUTPUTPATH = os.path.join(SUPPORTFILESPATH, 'sample_output.csv')
 
     def setUp(self):
         self.model = gocator_model.GocatorModel(TestGocatorModel.SAMPLECFGPATH)
@@ -80,7 +82,7 @@ class TestGocatorModel(unittest.TestCase):
             if 'resolution' in encoder_config:
                 lme['encoder_resolution'] = encoder_config.as_float('resolution')
             if 'model' in encoder_config:
-                lme['encoder_model'] = encoder_config['model'].title()
+                lme['encoder_model'] = encoder_config['model']
         return lme
 
     @configured_encoder.setter
@@ -108,7 +110,7 @@ class TestGocatorModel(unittest.TestCase):
         original_trig = self.configured_trigger
         new_trig = self.default_trigger
         new_trig['frame_rate'] = random.randint(300, 5000)
-        new_trig['travel_threshold'] = random.uniform(0, 1)
+        new_trig['travel_threshold'] = random.randint(0, 100)
         new_trig['trigger_direction'] = random.choice(['Forward', 'Backward', 'Bidirectional'])
         self.model.set_configured_trigger(new_trig)
         self.assertDictEqual(new_trig, self.model.get_configured_trigger())
@@ -127,10 +129,53 @@ class TestGocatorModel(unittest.TestCase):
         original_lme = self.configured_encoder
         new_lme = self.default_encoder
         new_lme['encoder_model'] = random.choice(['Alpha', 'Beta', 'Gamma', 'Potato'])
-        new_lme['encoder_resolution'] = random.uniform(0, 1)
+        new_lme['encoder_resolution'] = random.randint(0, 100)
         self.model.set_configured_encoder(new_lme)
         self.assertDictEqual(new_lme, self.model.get_configured_encoder())
         self.configured_encoder = original_lme
+
+    def start_scanner(self):
+        """Attempts to start the scanner process, returns True if scanner process is running."""
+        return self.model.start_scanner(TestGocatorModel.OUTPUTPATH)
+
+    def test_start_scanner(self):
+        """Verify starting the scanner process"""
+        self.assertTrue(self.start_scanner())
+        self.model.stop_scanner()
+
+    def test_stop_scanning(self):
+        """Verify stopping the scanner process"""
+        self.model.stop_scanner()
+        self.assertFalse(self.model.scanner_running)
+        self.model.clear_scanner_logs()
+
+    def test_profile(self):
+        """Verify creating a scatter plot of data"""
+        img_file = os.path.join(TestGocatorModel.SUPPORTFILESPATH, "test_profile.png")
+        self.model.profile(TestGocatorModel.SAMPLEINPUTDATA, img_file)
+        self.assertTrue(os.path.exists(img_file))
+        try:
+            os.remove(img_file)
+        except WindowsError: # File in use
+            pass
+
+    def test_get_scanner_logs(self):
+        """Verify returning standard output and standard error log files"""
+        self.start_scanner()
+        self.model.stop_scanner()
+        standard_output, standard_error = self.model.get_scanner_logs()
+        self.assertTrue(isinstance(standard_output, str))
+        self.assertTrue(isinstance(standard_error, str))
+        self.model.clear_scanner_logs()
+
+    def test_clear_scanner_logs(self):
+        """Verify deleting the scanner logs"""
+        self.start_scanner()
+        self.model.stop_scanner()
+        self.model.clear_scanner_logs()
+        standard_output, standard_error = self.model.get_scanner_logs()
+        self.assertTrue(len(standard_output)==0)
+        self.assertTrue(len(standard_error)==0)
 
 if __name__  == "__main__":
     random.seed()

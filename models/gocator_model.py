@@ -6,6 +6,7 @@ Chris R. Coughlin (TRI/Austin, Inc.)
 import os.path
 import datetime
 import subprocess
+import sys
 
 from configobj import ConfigObj
 import numpy as np
@@ -33,15 +34,21 @@ def now_as_filename(basepath=None, file_extension=''):
 class GocatorModel(object):
     """Handles communications between UI and Gocator control app"""
 
-    PROFILERPATH = "/home/ccoughlin/src/cxx/gocator_encoder"
-    SCANNERPATH = os.path.join(PROFILERPATH, "gocator_encoder")
+    # TODO - replace PROFILERPATH with final scanner folder on deployment
+    PROFILERPATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mock_scanner')
+    # TODO - replace SCANNERPATH with final scanner folder on deployment
+    SCANNERPATH = os.path.join(PROFILERPATH, "gocator_encoder.py")
     ENCODERCONFIGPATH = os.path.join(PROFILERPATH, "gocator_encoder.cfg")
-    STDOUTPATH = os.path.join(os.path.dirname(__file__), "profiler_output.log")
-    STDERRPATH = os.path.join(os.path.dirname(__file__), "profiler_errors.log")
+    STATICPATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+    SCANPATH = os.path.join(STATICPATH, "scans")
+    STDOUTPATH = os.path.join(STATICPATH, "profiler_output.log")
+    STDERRPATH = os.path.join(STATICPATH, "profiler_errors.log")
 
-    def __init__(self, config_file):
-        self.config_fname = config_file
-        self.cfg = ConfigObj(self.config_fname)
+    def __init__(self, config_file=None):
+        if config_file is not None:
+            self.config_fname = config_file
+        else:
+            self.config_fname = GocatorModel.ENCODERCONFIGPATH
         self.scanner_proc = None # subprocess used to run Gocator scanner
 
     @property
@@ -64,69 +71,100 @@ class GocatorModel(object):
         return {'encoder_model':'unspecified', 'encoder_resolution':0}
 
     def get_configured_trigger(self):
-        """Returns the trigger configuration"""
+        """Returns the trigger configuration, or the default trigger if unable to read the config file."""
+        # TODO - add logging to ConfigObj exceptions
         trigger_dict = self.get_sane_trigger()
-        if "Trigger" in self.cfg:
-            trigger_config = self.cfg["Trigger"]
-            if 'type' in trigger_config:
-                acceptable_trigger_types = ['encoder', 'time', 'input']
-                if trigger_config['type'].lower() in acceptable_trigger_types:
-                    trigger_dict['type'] = trigger_config['type'].title()
-            if 'enable_gate' in trigger_config:
-                trigger_dict['enable_gate'] = trigger_config.as_bool('enable_gate')
-            if 'frame_rate' in trigger_config:
-                trigger_dict['frame_rate'] = trigger_config.as_int('frame_rate')
-            if 'travel_threshold' in trigger_config:
-                trigger_dict['travel_threshold'] = trigger_config.as_float('travel_threshold')
-            if 'trigger_direction' in trigger_config:
-                acceptable_directions = ['forward', 'backward', 'bidirectional']
-                if trigger_config['trigger_direction'].lower() in acceptable_directions:
-                    trigger_dict['trigger_direction'] = trigger_config['trigger_direction'].title()
-        return trigger_dict
+        try:
+            cfg = ConfigObj(self.config_fname)
+            if "Trigger" in cfg:
+                trigger_config = cfg["Trigger"]
+                if 'type' in trigger_config:
+                    acceptable_trigger_types = ['encoder', 'time', 'input']
+                    if trigger_config['type'].lower() in acceptable_trigger_types:
+                        trigger_dict['type'] = trigger_config['type'].title()
+                if 'enable_gate' in trigger_config:
+                    trigger_dict['enable_gate'] = trigger_config.as_bool('enable_gate')
+                if 'frame_rate' in trigger_config:
+                    trigger_dict['frame_rate'] = trigger_config.as_int('frame_rate')
+                if 'travel_threshold' in trigger_config:
+                    trigger_dict['travel_threshold'] = trigger_config.as_float('travel_threshold')
+                if 'trigger_direction' in trigger_config:
+                    acceptable_directions = ['forward', 'backward', 'bidirectional']
+                    if trigger_config['trigger_direction'].lower() in acceptable_directions:
+                        trigger_dict['trigger_direction'] = trigger_config['trigger_direction'].title()
+        except SyntaxError: # Problem parsing config file
+            pass
+        except IOError: # config file doesn't exist
+            pass
+        finally:
+            return trigger_dict
 
     def set_configured_trigger(self, new_trigger_config):
-        """Saves the trigger configuration"""
-        if 'Trigger' not in self.cfg:
-            self.cfg['Trigger'] = {}
-        trigger_config = self.cfg['Trigger']
-        trigger_config['type'] = new_trigger_config['type']
-        trigger_config['enable_gate'] = new_trigger_config['enable_gate']
-        if 'frame_rate' in new_trigger_config:
-            trigger_config['frame_rate'] = new_trigger_config['frame_rate']
-        if 'travel_threshold' in new_trigger_config:
-            trigger_config['travel_threshold'] = new_trigger_config['travel_threshold']
-        if 'trigger_direction' in new_trigger_config:
-            trigger_config['trigger_direction'] = new_trigger_config['trigger_direction']
-        self.cfg.write()
+        """Saves the trigger configuration.  Returns True if successful."""
+        # TODO - add logging to ConfigObj exceptions
+        try:
+            cfg = ConfigObj(self.config_fname)
+            if 'Trigger' not in cfg:
+                cfg['Trigger'] = {}
+            trigger_config = cfg['Trigger']
+            trigger_config['type'] = new_trigger_config['type']
+            trigger_config['enable_gate'] = new_trigger_config['enable_gate']
+            if 'frame_rate' in new_trigger_config:
+                trigger_config['frame_rate'] = new_trigger_config['frame_rate']
+            if 'travel_threshold' in new_trigger_config:
+                trigger_config['travel_threshold'] = new_trigger_config['travel_threshold']
+            if 'trigger_direction' in new_trigger_config:
+                trigger_config['trigger_direction'] = new_trigger_config['trigger_direction']
+            cfg.write()
+            return True
+        except SyntaxError: # Problem parsing config file
+            return False
+        except IOError: # config file doesn't exist
+            return False
 
     def get_configured_encoder(self):
-        """Returns the encoder configuration"""
+        """Returns the encoder configuration, or the default encoder if the config file couldn't be read."""
+        # TODO - add logging to ConfigObj exceptions
         lme = self.get_sane_encoder()
-        if 'Encoder' in self.cfg:
-            encoder_config = self.cfg['Encoder']
-            if 'resolution' in encoder_config:
-                lme['encoder_resolution'] = encoder_config.as_float('resolution')
-            if 'model' in encoder_config:
-                lme['encoder_model'] = encoder_config['model'].title()
-        return lme
+        try:
+            cfg = ConfigObj(self.config_fname)
+            if 'Encoder' in cfg:
+                encoder_config = cfg['Encoder']
+                if 'resolution' in encoder_config:
+                    lme['encoder_resolution'] = encoder_config.as_float('resolution')
+                if 'model' in encoder_config:
+                    lme['encoder_model'] = encoder_config['model']
+        except SyntaxError: # Problem parsing config file
+            return False
+        except IOError: # config file doesn't exist
+            return False
+        finally:
+            return lme
 
     def set_configured_encoder(self, new_encoder_config):
-        """Saves the encoder configuration"""
-        if 'Encoder' not in self.cfg:
-            self.cfg['Encoder'] = {}
-        encoder_config = self.cfg['Encoder']
-        if 'encoder_model' in new_encoder_config:
-            encoder_config['model'] = new_encoder_config['encoder_model']
-        if 'encoder_resolution' in new_encoder_config:
-            encoder_config['resolution'] = new_encoder_config['encoder_resolution']
-        self.cfg.write()
+        """Saves the encoder configuration.  Returns True if successful."""
+        try:
+            cfg = ConfigObj(self.config_fname)
+            if 'Encoder' not in cfg:
+                cfg['Encoder'] = {}
+            encoder_config = cfg['Encoder']
+            if 'encoder_model' in new_encoder_config:
+                encoder_config['model'] = new_encoder_config['encoder_model']
+            if 'encoder_resolution' in new_encoder_config:
+                encoder_config['resolution'] = new_encoder_config['encoder_resolution']
+            cfg.write()
+            return True
+        except SyntaxError: # Problem parsing config file
+            return False
+        except IOError: # config file doesn't exist
+            return False
 
     def start_scanner(self, output_file):
         """Starts the Gocator profiler, saves data to specified output file.
         Returns True if the scanning process was successfully started."""
         config_arg = "-c" + GocatorModel.ENCODERCONFIGPATH
         output_arg = "-o" + output_file
-        self.scanner_proc = subprocess.Popen([GocatorModel.SCANNERPATH, config_arg, output_arg],
+        self.scanner_proc = subprocess.Popen([sys.executable, GocatorModel.SCANNERPATH, config_arg, output_arg],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
         return self.scanner_running
@@ -134,9 +172,14 @@ class GocatorModel(object):
     def stop_scanner(self):
         """Stops the Gocator profiler, writes its stdout and stderr to log files"""
         if self.scanner_running:
+            # Generate some standard output from the mock encoder application
+            # TODO - remove on deployment
+            self.scanner_proc.stdin.write("1\n")
+            self.scanner_proc.stdin.write("2\n")
+            self.scanner_proc.stdin.write("potato\n")
+            self.scanner_proc.stdin.write("q\n") # Mock scanner quits when it encounters a 'q' in standard input
             stdout = self.scanner_proc.stdout.read()
             stderr = self.scanner_proc.stderr.read()
-            self.scanner_proc.stdin.write("q\n")
             with open(GocatorModel.STDOUTPATH, "ab") as stdout_fid:
                 stdout_fid.write(stdout)
             with open(GocatorModel.STDERRPATH, "ab") as stderr_fid:
@@ -154,6 +197,18 @@ class GocatorModel(object):
                 error_log = stderr_fid.read()
         return output_log, error_log
 
+    def clear_scanner_logs(self):
+        """Erases the scanner's logs"""
+        try:
+            if os.path.exists(GocatorModel.STDOUTPATH):
+                os.remove(GocatorModel.STDOUTPATH)
+            if os.path.exists(GocatorModel.STDERRPATH):
+                os.remove(GocatorModel.STDERRPATH)
+        except OSError: # couldn't remove file
+            pass
+        except WindowsError: # file in use (Windows)
+            pass
+
     def profile(self, data_file, img_file):
         """Produces a basic plot of the specified data file, saved as PNG to specified image file."""
         matplotlib.rcParams['axes.formatter.limits'] = -4, 4
@@ -165,15 +220,17 @@ class GocatorModel(object):
         figure = Figure()
         canvas = FigureCanvas(figure)
         axes = figure.gca()
-        x,y,z = np.genfromtxt(data_file, delimiter=",", unpack=True)
+        # TODO - wire up reading actual data file on deployment
+        #x, y, z = np.genfromtxt(data_file, delimiter=",", unpack=True)
+        mock_data_file = os.path.join(GocatorModel.PROFILERPATH, "one_hole_scan.csv")
+        x, y, z = np.genfromtxt(mock_data_file, delimiter=",", unpack=True)
+        import shutil
+        shutil.copyfile(mock_data_file, data_file)
         # TODO - uncomment following when scanner connected (filters bad Z readings from scanner)
-        #xi = x[z!=-32.768]
-        #yi = y[z!=-32.768]
-        #zi = z[z!=-32.768]
-        xi=x
-        yi=y
-        zi=z
-        scatter_plt = axes.scatter(xi, yi, c=zi, cmap=cm.get_cmap("Set1"))
+        xi = x[z!=-32.768]
+        yi = y[z!=-32.768]
+        zi = z[z!=-32.768]
+        scatter_plt = axes.scatter(xi, yi, c=zi, cmap=cm.get_cmap("Set1"), marker='+')
         axes.grid(True)
         axes.axis([np.min(xi), np.max(xi), np.min(yi), np.max(yi)])
         figure.colorbar(scatter_plt)

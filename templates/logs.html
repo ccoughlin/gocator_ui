@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %} System Logs {% endblock %}
+{% block content %}
+
+    <ul>
+        <li><a href="#output">Output Log</a></li>
+        <li><a href="#error">Error Log</a></li>
+    </ul>
+
+    <section id="output">
+        <h2>Output Log</h2>
+        {% if output_log %}
+            <pre>{{ output_log }}</pre>
+        {% else %}
+            <p>No output log available.</p>
+        {% endif %}
+    </section>
+
+    <section id="error">
+        <h2>Error Log</h2>
+        {% if error_log %}
+            <pre>{{ error_log }}</pre>
+        {% else %}
+            <p>No error log available.</p>
+        {% endif %}
+    </section>
+
+    <p><a href="/clearlogs" class="btn btn-warning" role="btn">Clear Logs</a></p>
+{% endblock %}

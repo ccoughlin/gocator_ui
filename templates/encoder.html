@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block title %} Configure Encoder {% endblock %}
+{% block content %}
+    <form class="form" method="POST" action="/encoder_config" id="triggerConfigForm" data-validate="parsley">
+        <div class="control-group">
+            <label class="control-label" for="encoder_model">Encoder Model</label>
+            <input type="text" id="encoder_model" name="encoder_model">
+        </div>
+        <div class="control-group">
+            <div class="controls">
+                <label class="control-label" for="encoder_resolution">Resolution (mm)</label>
+                <input id="encoder_resolution" name="encoder_resolution" type=text data-type="number">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="button" class="btn" onclick="window.location.replace('/');">Cancel</button>
+        </div>
+    </form>
+    <script type="text/javascript">
+        $(window).load(function() {
+            var configRequest = $.ajax({
+                url:"/encoder_config",
+                type:"GET",
+                dataType:"json"
+            });
+            configRequest.done(function() {
+                /* Configure form with current encoder configuration */
+                encoder_config = JSON.parse(configRequest.responseText);
+
+
+                /* Make/model of encoder */
+                var encoderModel = encoder_config['encoder_model'];
+                $("#encoder_model").val(encoderModel);
+
+                /* Resolution of encoder */
+                var encoderResolution = encoder_config['encoder_resolution'];
+                $("#encoder_resolution").val(encoderResolution);
+            });
+            configRequest.fail(function() {
+                console.log("whoops");
+            });
+        });
+    </script>
+{% endblock %}

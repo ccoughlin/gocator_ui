@@ -1,0 +1,130 @@
+{% extends "layout.html" %}
+{% block title %} Configure Triggering {% endblock %}
+{% block content %}
+    <form class="form" method="POST" action="/trigger_config" id="triggerConfigForm" data-validate="parsley">
+        <div class="control-group">
+            <label class="control-label" for="triggertype">Type Of Trigger</label>
+            <select id="triggertype" name="triggertype">
+                <option value="Encoder">Encoder</option>
+                <option value="Time">Timed</option>
+                <option value="Input">Digital Input</option>
+            </select>
+            <span class="help-inline" id="triggertype_help" class="triggertype_help"></span>
+        </div>
+        <div class="control-group">
+            <div class="controls">
+                <label class="checkbox">
+                    <input id="use_gate" name="use_gate" type="checkbox" />Trigger On Digital Input Only?
+                </label>
+            </div>
+        </div>
+        <div class="control-group">
+            <div class="controls">
+                <label class="control-label" for="frame_rate">Scans Per Second</label>
+                <input id="frame_rate" name="frame_rate" type=text data-type="digits" disabled>
+                <span class="help-inline" id="frame_rate_help" class="frame_rate_help"></span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <label class="control-label" for="travel_threshold">Trigger Distance (mm)</label>
+            <input id="travel_threshold" name="travel_threshold" type=text data-type="number" disabled>
+            <span class="help-inline" id="travel_threshold_help" class="travel_threshold_help"></span>
+            <label class="control-label" for="trigger_direction">Trigger Direction</label>
+            <select id="trigger_direction" name="trigger_direction" disabled>
+                <option value="Bidirectional">Bidirectional</option>
+                <option value="Forward">Forward</option>
+                <option value="Backward">Reverse</option>
+            </select>
+            <span class="help-inline" id="trigger_direction_help" class="trigger_direction_help"></span>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="button" class="btn" onclick="window.location.replace('/');">Cancel</button>
+        </div>
+    </form>
+    <script type="text/javascript">
+        $(window).load(function() {
+            var configRequest = $.ajax({
+                url:"/trigger_config",
+                type:"GET",
+                dataType:"json"
+            });
+            configRequest.done(function() {
+                /* Configure form with current trigger configuration */
+                var trigger_config = JSON.parse(configRequest.responseText);
+
+                /* Type Of Trigger */
+                var triggerType = trigger_config['type'];
+                $("#triggertype").val(triggerType);
+                setTriggerElements();
+
+                /* Use Trigger Gate - ? */
+                document.getElementById("use_gate").checked = trigger_config['enable_gate'];
+
+                /* Set Frame Rate for Timer Triggers */
+                var triggerFrameRate = trigger_config['frame_rate'];
+                $("#frame_rate").val(triggerFrameRate);
+
+                /* Set Travel Threshold for Encoder Triggers */
+                var triggerTravelThreshold = trigger_config['travel_threshold'];
+                $("#travel_threshold").val(triggerTravelThreshold);
+
+                /* Set Travel Direction for Encoder Triggers */
+                var triggerTravelDirection = trigger_config['trigger_direction'];
+                $("#trigger_direction").val(triggerTravelDirection);
+            });
+            configRequest.fail(function() {
+                console.log("whoops");
+            });
+        });
+
+        $("#triggertype").change(function() {
+            /* Update enabled/disabled form elements */
+            setTriggerElements();
+        });
+
+        function setTriggerElements() {
+            /* Enable / disable form inputs based on type of trigger selected */
+            function setTimeTriggerElements(enabled) {
+                if (enabled===true) {
+                    $('#frame_rate').removeAttr('disabled');
+                    $("#frame_rate_help").html("");
+                } else {
+                    $("#frame_rate").attr('disabled', 'disabled');
+                    $("#frame_rate_help").html("Time triggering only");
+                }
+            }
+
+            function setEncoderTriggerElements(enabled) {
+                if (enabled===true) {
+                    $("#travel_threshold").removeAttr('disabled');
+                    $("#trigger_direction").removeAttr('disabled');
+                    $("#travel_threshold_help").html("");
+                    $("#trigger_direction_help").html("");
+                } else {
+                    $("#travel_threshold").attr('disabled', 'disabled');
+                    $("#trigger_direction").attr('disabled', 'disabled');
+                    $("#travel_threshold_help").html("Encoder triggering only");
+                    $("#trigger_direction_help").html("Encoder triggering only");
+                }
+            }
+
+            var triggerType = $("#triggertype").val();
+            if (triggerType==="Encoder") {
+                setTimeTriggerElements(false);
+                setEncoderTriggerElements(true);
+                $("#triggertype_help").html("Trigger on encoder readings");
+            } else if (triggerType==="Time") {
+                setTimeTriggerElements(true);
+                setEncoderTriggerElements(false);
+                $("#triggertype_help").html("Trigger periodically");
+            } else {
+                setTimeTriggerElements(false);
+                setEncoderTriggerElements(false);
+                $("#triggertype_help").html("Trigger on digital input reading");
+            }
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block title %} Scan Hole {% endblock %}
+{% block content %}
+    <p>Line the Hole Quality Scanner fixture up with the hole to scan.  When you're ready, press the <button type="button" class="btn btn-small btn-primary disabled" disabled="disabled">Scan</button> button below to start scanning.</p>
+    <form class="form" id="scanConfig" name="scanConfig">
+        <div class="control-group">
+            <div class="controls">
+                <label class="checkbox">
+                    <input id="get_plot" name="get_plot" type="checkbox">Generate Image
+                </label>
+            </div>
+        </div>
+        <div class="control-group">
+            <div class="controls">
+                <label class="checkbox">
+                    <input id="get_data" name="get_data" type="checkbox" checked/>Get Raw Data
+                </label>
+            </div>
+        </div>
+    </form>
+    <a href="#scanModal" class="btn btn-large btn-primary" role="button" id="record" name="record" data-toggle="modal">Scan</a>
+    <div id="scanModal" class="modal hide fade" role="dialog" aria-hidden="true">
+        <div class="modal-header">
+            <h3 id="scanStateHeader" name="scanStateHeader"></h3>
+        </div>
+        <div class="modal-body" id="scanStateBody" name="scanStateBody">
+        </div>
+        <div class="modal-footer" id="scanModalButton" name="scanModalButton">
+        </div>
+    </div>
+    <p><div id="scanResults" name="scanResults"></div></p>
+    <script type="text/javascript">
+        startScan = function() {
+            $("#scanResults").html('');
+            var scanConfigSettings = {"get_plot":$("#get_plot").is(":checked"),
+                "get_data":$("#get_data").is(":checked")};
+            var scanRequest = $.ajax({
+                url:"/scan",
+                type:"POST",
+                dataType:"json",
+                data:scanConfigSettings
+            });
+            scanRequest.done(function() {
+                var requestResult = JSON.parse(scanRequest.responseText);
+                var scanning = requestResult['scanning'];
+                if (scanning === true) {
+                    $("#scanStateHeader").html("Scanning");
+                    $("#scanStateBody").html("<p><img src=\"{{ url_for('static', filename='img/working.gif') }}\" width=\"64\" height=\"64\"> Laser scanner activated, scan in progress...</p>");
+                    $("#scanModalButton").html('<button class="btn btn-large btn-danger" type="button" id="scanButton" name="scanButton" onclick="stopScan();">Stop</button></p>');
+                } else {
+                    $("#scanStateHeader").html("Scanning Failed");
+                    $("#scanStateBody").html('<div class="alert alert-error">Unable to start laser scanner</div>');
+                    $("#scanModalButton").html('<button class="btn btn-large btn-info" type="button" id="scanButton" name="scanButton" onclick="$(\'#scanModal\').modal(\'toggle\');">Ok</button></p>');
+                }
+            });
+            scanRequest.fail(function() {
+                alert("Unable to start scanner, please perform a system check.");
+            });
+        }
+        $("a#record").bind('click', startScan);
+
+        stopScan = function() {
+            var stopscanRequest = $.ajax({
+                url:"/stopscan",
+                type:"POST",
+                dataType:"json"
+            });
+            stopscanRequest.done(function() {
+                var response = JSON.parse(stopscanRequest.responseText);
+                var linkToPlot;
+                var linkToData;
+                $("#scanResults").html('<div class="alert alert-success">Scan Complete!</div>');
+                if ($("#get_plot").is(":checked")) {
+                    linkToPlot = '<a target="_blank" href="' + response['image'] + '">Get Profile Plot</a>';
+                    $("#scanResults").append('<p>' + linkToPlot + '</p>');
+                }
+                if ($("#get_data").is(":checked")) {
+                    linkToData = '<a target="_blank" href="' + response['data'] + '">Get Profile Data</a>';
+                    $("#scanResults").append('<p>' + linkToData + '</p>');
+                }
+
+            });
+            stopscanRequest.fail(function() {
+                alert("Unable to stop scanner, please perform a system check.");
+            });
+            $("#scanModal").modal('toggle');
+        }
+    </script>
+{% endblock %}
