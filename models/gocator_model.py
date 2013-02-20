@@ -35,9 +35,10 @@ class GocatorModel(object):
     """Handles communications between UI and Gocator control app"""
 
     # TODO - replace PROFILERPATH with final scanner folder on deployment
-    PROFILERPATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mock_scanner')
+    #PROFILERPATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mock_scanner')
+    PROFILERPATH = "/home/ccoughlin/src/cxx/gocator_profiler"
     # TODO - replace SCANNERPATH with final scanner folder on deployment
-    SCANNERPATH = os.path.join(PROFILERPATH, "gocator_encoder.py")
+    SCANNERPATH = os.path.join(PROFILERPATH, "gocator_encoder")
     ENCODERCONFIGPATH = os.path.join(PROFILERPATH, "gocator_encoder.cfg")
     STATICPATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
     SCANPATH = os.path.join(STATICPATH, "scans")
@@ -88,10 +89,10 @@ class GocatorModel(object):
                     trigger_dict['frame_rate'] = trigger_config.as_int('frame_rate')
                 if 'travel_threshold' in trigger_config:
                     trigger_dict['travel_threshold'] = trigger_config.as_float('travel_threshold')
-                if 'trigger_direction' in trigger_config:
+                if 'travel_direction' in trigger_config:
                     acceptable_directions = ['forward', 'backward', 'bidirectional']
-                    if trigger_config['trigger_direction'].lower() in acceptable_directions:
-                        trigger_dict['trigger_direction'] = trigger_config['trigger_direction'].title()
+                    if trigger_config['travel_direction'].lower() in acceptable_directions:
+                        trigger_dict['trigger_direction'] = trigger_config['travel_direction'].title()
         except SyntaxError: # Problem parsing config file
             pass
         except IOError: # config file doesn't exist
@@ -114,7 +115,7 @@ class GocatorModel(object):
             if 'travel_threshold' in new_trigger_config:
                 trigger_config['travel_threshold'] = new_trigger_config['travel_threshold']
             if 'trigger_direction' in new_trigger_config:
-                trigger_config['trigger_direction'] = new_trigger_config['trigger_direction']
+                trigger_config['travel_direction'] = new_trigger_config['trigger_direction']
             cfg.write()
             return True
         except SyntaxError: # Problem parsing config file
@@ -164,7 +165,7 @@ class GocatorModel(object):
         Returns True if the scanning process was successfully started."""
         config_arg = "-c" + GocatorModel.ENCODERCONFIGPATH
         output_arg = "-o" + output_file
-        self.scanner_proc = subprocess.Popen([sys.executable, GocatorModel.SCANNERPATH, config_arg, output_arg],
+        self.scanner_proc = subprocess.Popen([GocatorModel.SCANNERPATH, config_arg, output_arg],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
         return self.scanner_running
@@ -174,10 +175,7 @@ class GocatorModel(object):
         if self.scanner_running:
             # Generate some standard output from the mock encoder application
             # TODO - remove on deployment
-            self.scanner_proc.stdin.write("1\n")
-            self.scanner_proc.stdin.write("2\n")
-            self.scanner_proc.stdin.write("potato\n")
-            self.scanner_proc.stdin.write("q\n") # Mock scanner quits when it encounters a 'q' in standard input
+            self.scanner_proc.stdin.write("q\r\n") # Mock scanner quits when it encounters a 'q' in standard input
             stdout = self.scanner_proc.stdout.read()
             stderr = self.scanner_proc.stderr.read()
             with open(GocatorModel.STDOUTPATH, "ab") as stdout_fid:
@@ -220,18 +218,23 @@ class GocatorModel(object):
         figure = Figure()
         canvas = FigureCanvas(figure)
         axes = figure.gca()
-        # TODO - wire up reading actual data file on deployment
-        #x, y, z = np.genfromtxt(data_file, delimiter=",", unpack=True)
-        mock_data_file = os.path.join(GocatorModel.PROFILERPATH, "one_hole_scan.csv")
-        x, y, z = np.genfromtxt(mock_data_file, delimiter=",", unpack=True)
-        import shutil
-        shutil.copyfile(mock_data_file, data_file)
+        x, y, z = np.genfromtxt(data_file, delimiter=",", unpack=True)
         # TODO - uncomment following when scanner connected (filters bad Z readings from scanner)
         xi = x[z!=-32.768]
         yi = y[z!=-32.768]
         zi = z[z!=-32.768]
-        scatter_plt = axes.scatter(xi, yi, c=zi, cmap=cm.get_cmap("Set1"), marker='+')
+        # Experimental - use Wiener filter to smooth out data (had best overall results
+        # in lab tests with the Gocator)
+        try:
+            import scipy.signal
+            zi = scipy.signal.wiener(zi, mysize=15, noise=1)
+        except ImportError: # SciPy not available
+            pass
+        scatter_plt = axes.scatter(xi, yi, c=zi)
         axes.grid(True)
         axes.axis([np.min(xi), np.max(xi), np.min(yi), np.max(yi)])
-        figure.colorbar(scatter_plt)
+        colorbar = figure.colorbar(scatter_plt)
+        colorbar.set_label("Range [mm]")
+        axes.set_xlabel("Horizontal Position [mm]")
+        axes.set_ylabel("Scan Position [mm]")
         figure.savefig(img_file)

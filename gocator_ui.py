@@ -96,6 +96,15 @@ def scan():
     # TODO - refactor to skip returning plot and/or data if not set
     get_plot = request.form.get('get_plot', 'false').lower() == 'true'
     get_data = request.form.get('get_data', 'true').lower() == 'true'
+    try:
+        if os.path.exists(OUTPUTDATAPATH):
+            os.remove(OUTPUTDATAPATH)
+        if os.path.exists(OUTPUTIMAGEPATH):
+            os.remove(OUTPUTIMAGEPATH)
+    except WindowsError: # file in use
+        pass
+    except OSError: # couldn't delete file(s)
+        pass
     response = {"scanning":model.start_scanner(OUTPUTDATAPATH)}
     return jsonify(response)
 
@@ -111,8 +120,8 @@ def stopscan():
 
 def main():
     # TODO - replace debugging on deployment
-    app.run(debug=True)
-    #app.run(host='0.0.0.0')
+    #app.run(debug=True)
+    app.run(host='0.0.0.0')
 
 if __name__ == '__main__':
     main()
