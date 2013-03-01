@@ -28,7 +28,7 @@ class TestGocatorModel(unittest.TestCase):
                 'enable_gate':False,
                 'frame_rate':300,
                 'travel_threshold':1,
-                'trigger_direction':'bidirectional'}
+                'travel_direction':'bidirectional'}
 
     @property
     def configured_trigger(self):
@@ -46,10 +46,10 @@ class TestGocatorModel(unittest.TestCase):
                 trig['frame_rate'] = trigger_config.as_int('frame_rate')
             if 'travel_threshold' in trigger_config:
                 trig['travel_threshold'] = trigger_config.as_float('travel_threshold')
-            if 'trigger_direction' in trigger_config:
+            if 'travel_direction' in trigger_config:
                 acceptable_directions = ['forward', 'backward', 'bidirectional']
-                if trigger_config['trigger_direction'].lower() in acceptable_directions:
-                    trig['trigger_direction'] = trigger_config['trigger_direction'].title()
+                if trigger_config['travel_direction'].lower() in acceptable_directions:
+                    trig['travel_direction'] = trigger_config['travel_direction'].title()
         return trig
 
     @configured_trigger.setter
@@ -64,8 +64,8 @@ class TestGocatorModel(unittest.TestCase):
             trigger_config['frame_rate'] = new_trigger_config['frame_rate']
         if 'travel_threshold' in new_trigger_config:
             trigger_config['travel_threshold'] = new_trigger_config['travel_threshold']
-        if 'trigger_direction' in new_trigger_config:
-            trigger_config['trigger_direction'] = new_trigger_config['trigger_direction'].title()
+        if 'travel_direction' in new_trigger_config:
+            trigger_config['travel_direction'] = new_trigger_config['travel_direction'].title()
         self.cfg.write()
 
     @property
@@ -111,7 +111,7 @@ class TestGocatorModel(unittest.TestCase):
         new_trig = self.default_trigger
         new_trig['frame_rate'] = random.randint(300, 5000)
         new_trig['travel_threshold'] = random.randint(0, 100)
-        new_trig['trigger_direction'] = random.choice(['Forward', 'Backward', 'Bidirectional'])
+        new_trig['travel_direction'] = random.choice(['Forward', 'Backward', 'Bidirectional'])
         self.model.set_configured_trigger(new_trig)
         self.assertDictEqual(new_trig, self.model.get_configured_trigger())
         self.configured_trigger = original_trig
@@ -176,6 +176,17 @@ class TestGocatorModel(unittest.TestCase):
         standard_output, standard_error = self.model.get_scanner_logs()
         self.assertTrue(len(standard_output)==0)
         self.assertTrue(len(standard_error)==0)
+
+    def start_targeting(self):
+        """Attempts to start the targeting process, returns True if process is running."""
+        return self.model.start_target()
+
+    def test_start_target(self):
+        """Verify starting the targeting process"""
+        self.assertTrue(self.start_targeting())
+        self.model.stop_scanner()
+
+
 
 if __name__  == "__main__":
     random.seed()

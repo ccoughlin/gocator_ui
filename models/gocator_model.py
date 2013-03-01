@@ -65,7 +65,7 @@ class GocatorModel(object):
                 'enable_gate':False,
                 'frame_rate':300,
                 'travel_threshold':1,
-                'trigger_direction':'bidirectional'}
+                'travel_direction':'bidirectional'}
 
     def get_sane_encoder(self):
         """Returns a dict of sane default settings for the linear magnetic encoder"""
@@ -92,7 +92,7 @@ class GocatorModel(object):
                 if 'travel_direction' in trigger_config:
                     acceptable_directions = ['forward', 'backward', 'bidirectional']
                     if trigger_config['travel_direction'].lower() in acceptable_directions:
-                        trigger_dict['trigger_direction'] = trigger_config['travel_direction'].title()
+                        trigger_dict['travel_direction'] = trigger_config['travel_direction'].title()
         except SyntaxError: # Problem parsing config file
             pass
         except IOError: # config file doesn't exist
@@ -114,8 +114,8 @@ class GocatorModel(object):
                 trigger_config['frame_rate'] = new_trigger_config['frame_rate']
             if 'travel_threshold' in new_trigger_config:
                 trigger_config['travel_threshold'] = new_trigger_config['travel_threshold']
-            if 'trigger_direction' in new_trigger_config:
-                trigger_config['travel_direction'] = new_trigger_config['trigger_direction']
+            if 'travel_direction' in new_trigger_config:
+                trigger_config['travel_direction'] = new_trigger_config['travel_direction']
             cfg.write()
             return True
         except SyntaxError: # Problem parsing config file

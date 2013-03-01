@@ -30,13 +30,13 @@
             <label class="control-label" for="travel_threshold">Trigger Distance (mm)</label>
             <input id="travel_threshold" name="travel_threshold" type=text data-type="number" disabled>
             <span class="help-inline" id="travel_threshold_help" class="travel_threshold_help"></span>
-            <label class="control-label" for="trigger_direction">Trigger Direction</label>
-            <select id="trigger_direction" name="trigger_direction" disabled>
+            <label class="control-label" for="travel_direction">Trigger Direction</label>
+            <select id="travel_direction" name="travel_direction" disabled>
                 <option value="Bidirectional">Bidirectional</option>
                 <option value="Forward">Forward</option>
                 <option value="Backward">Reverse</option>
             </select>
-            <span class="help-inline" id="trigger_direction_help" class="trigger_direction_help"></span>
+            <span class="help-inline" id="travel_direction_help" class="travel_direction_help"></span>
         </div>
 
         <div class="form-actions">
@@ -72,8 +72,8 @@
                 $("#travel_threshold").val(triggerTravelThreshold);
 
                 /* Set Travel Direction for Encoder Triggers */
-                var triggerTravelDirection = trigger_config['trigger_direction'];
-                $("#trigger_direction").val(triggerTravelDirection);
+                var triggerTravelDirection = trigger_config['travel_direction'];
+                $("#travel_direction").val(triggerTravelDirection);
             });
             configRequest.fail(function() {
                 console.log("whoops");
@@ -100,14 +100,14 @@
             function setEncoderTriggerElements(enabled) {
                 if (enabled===true) {
                     $("#travel_threshold").removeAttr('disabled');
-                    $("#trigger_direction").removeAttr('disabled');
+                    $("#travel_direction").removeAttr('disabled');
                     $("#travel_threshold_help").html("");
-                    $("#trigger_direction_help").html("");
+                    $("#travel_direction_help").html("");
                 } else {
                     $("#travel_threshold").attr('disabled', 'disabled');
-                    $("#trigger_direction").attr('disabled', 'disabled');
+                    $("#travel_direction").attr('disabled', 'disabled');
                     $("#travel_threshold_help").html("Encoder triggering only");
-                    $("#trigger_direction_help").html("Encoder triggering only");
+                    $("#travel_direction_help").html("Encoder triggering only");
                 }
             }
 

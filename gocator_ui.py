@@ -49,7 +49,7 @@ def trigger_config():
     trigger_dict['type'] = request.form['triggertype']
     if trigger_dict['type'] == 'Encoder':
         trigger_dict['travel_threshold'] = request.form['travel_threshold']
-        trigger_dict['trigger_direction'] = request.form['trigger_direction']
+        trigger_dict['travel_direction'] = request.form['travel_direction']
     elif trigger_dict['type'] == 'Time':
         trigger_dict['frame_rate'] = request.form['frame_rate']
     trigger_dict['enable_gate'] = request.form.get('use_gate', False)
