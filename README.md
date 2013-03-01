@@ -7,5 +7,7 @@ The web interface allows the user to configure the laser profiling (triggering, 
 ## Requirements
 * [Python](http://www.python.org)
 * [NumPy](http://www.numpy.org)
+* [SciPy](http://www.scipy.org/)
 * [matplotlib](http://www.matplotlib.org)
 * [Flask](http://flask.pocoo.org/)
+* [gocator_profiler](https://github.com/ccoughlin/gocator_profiler)
