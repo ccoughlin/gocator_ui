@@ -1,23 +1,39 @@
+#!/usr/bin/env python
 """gocator_ui.py - simple client-side UI for the handheld laser profiler project
 
 Chris R. Coughlin (TRI/Austin, Inc.)
 """
 
-from flask import Flask, flash, jsonify, render_template, request, url_for, redirect
+from flask import Flask, flash, jsonify, render_template, request, session, url_for, redirect
 import os.path
+import os
+import tempfile
 from models import gocator_model
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
 # Output path for generated plots
-OUTPUTIMAGEPATH = os.path.join(BASEPATH, 'static', 'img', 'scanResults.png')
+OUTPUTIMAGEPATH = os.path.join(BASEPATH, 'static', 'data', 'img')
 # Output path for profile data
-OUTPUTDATAPATH = os.path.join(BASEPATH, 'static', 'scanResults.csv')
+OUTPUTDATAPATH = os.path.join(BASEPATH, 'static', 'data')
 
 app = Flask(__name__)
 # TODO - replace secret key on deployment
 app.secret_key = '\x96\x02\xd9\xd9q\xd25e\xf0\x83<\x90\xc1\xb8\xde\xa9\xaak\r\x81\x17c\xda\xfb'
-
 model = gocator_model.GocatorModel()
+
+def temp_fname(fldr, ext):
+    """Wrapper for generating a NamedTemporaryFile in the specified folder with the
+    specified extension.  Caller responsible for deleting the file."""
+    fname = tempfile.NamedTemporaryFile(dir=fldr, suffix=ext)
+    return fname.name
+
+def temp_data_fname():
+    """Returns a temporary filename for data files"""
+    return temp_fname(fldr=OUTPUTDATAPATH, ext=".csv")
+
+def temp_image_fname():
+    """Returns a temporary filename for image files"""
+    return temp_fname(fldr=OUTPUTIMAGEPATH, ext=".png")
 
 @app.route('/')
 def index():
@@ -94,28 +110,35 @@ def tri():
 def scan():
     """Initiate profiling"""
     # TODO - refactor to skip returning plot and/or data if not set
-    get_plot = request.form.get('get_plot', 'false').lower() == 'true'
-    get_data = request.form.get('get_data', 'true').lower() == 'true'
-    try:
-        if os.path.exists(OUTPUTDATAPATH):
-            os.remove(OUTPUTDATAPATH)
-        if os.path.exists(OUTPUTIMAGEPATH):
-            os.remove(OUTPUTIMAGEPATH)
-    except WindowsError: # file in use
-        pass
-    except OSError: # couldn't delete file(s)
-        pass
-    response = {"scanning":model.start_scanner(OUTPUTDATAPATH)}
+    session['get_plot'] = request.form.get('get_plot', 'false').lower() 
+    session['get_data'] = request.form.get('get_data', 'true').lower() 
+    session['data_path'] = temp_data_fname()
+    session['image_path'] = temp_image_fname()
+    response = {"scanning":model.start_scanner(session['data_path'])}
     return jsonify(response)
 
 @app.route('/stopscan', methods=['POST'])
 def stopscan():
     """Stops profiling.  Returns JSON data with URLs for the raw data and a PNG plot of same."""
     model.stop_scanner()
-    model.profile(OUTPUTDATAPATH, OUTPUTIMAGEPATH)
+    if session['get_plot'] == 'true':
+        model.profile(session['data_path'], session['image_path'])
     response = {"scanning":False,
-                "image":url_for('static', filename='img/scanResults.png'),
-                "data":url_for('static', filename='scanResults.csv')}
+                "image":url_for('static', filename='data/img/{0}'.format(os.path.basename(session['image_path']))),
+                "data":url_for('static', filename='data/{0}'.format(os.path.basename(session['data_path'])))}
+    return jsonify(response)
+
+@app.route('/target', methods=['POST'])
+def target():
+    """Start the laser, allow user to align before taking actual measurements"""
+    response = {"running":model.start_target()}
+    return jsonify(response)
+
+@app.route('/stoptarget', methods=['POST'])
+def stoptarget():
+    """Turns the laser off after targeting"""
+    model.stop_scanner()
+    response = {"running":False}
     return jsonify(response)
 
 def main():

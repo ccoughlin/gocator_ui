@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %} Scan Hole {% endblock %}
 {% block content %}
-    <p>Line the Hole Quality Scanner fixture up with the hole to scan.  When you're ready, press the <button type="button" class="btn btn-small btn-primary disabled" disabled="disabled">Scan</button> button below to start scanning.</p>
+    <p>Line the Hole Quality Scanner fixture up with the hole to scan, or use the <button type="button" class="btn btn-small btn-inverse disabled" disabled="disabled">Align Laser</button> button to turn on the laser for alignment.  When you're ready, press the <button type="button" class="btn btn-small btn-primary disabled" disabled="disabled">Scan</button> button below to start scanning.</p>
     <form class="form" id="scanConfig" name="scanConfig">
         <div class="control-group">
             <div class="controls">
@@ -18,7 +18,17 @@
             </div>
         </div>
     </form>
+    <a href="#targetModal" class="btn btn-large btn-inverse" role="button" id="target" name="target" data-toggle="modal">Align Laser</a>
     <a href="#scanModal" class="btn btn-large btn-primary" role="button" id="record" name="record" data-toggle="modal">Scan</a>
+    <div id="targetModal" class="modal hide fade" role="dialog" aria-hidden="true">
+        <div class="modal-header">
+            <h3 id="targetStateHeader" name="targetStateHeader"></h3>
+        </div>
+        <div class="modal-body" id="targetStateBody" name="scanStateBody">
+        </div>
+        <div class="modal-footer" id="targetModalButton" name="targetModalButton">
+        </div>
+    </div>
     <div id="scanModal" class="modal hide fade" role="dialog" aria-hidden="true">
         <div class="modal-header">
             <h3 id="scanStateHeader" name="scanStateHeader"></h3>
@@ -85,5 +95,40 @@
             });
             $("#scanModal").modal('toggle');
         }
+
+        startTarget = function() {
+            var targetRequest = $.ajax({
+                url:"/target",
+                type:"POST",
+                dataType:"json"
+            });
+            targetRequest.done(function() {
+                var requestResult = JSON.parse(targetRequest.responseText);
+                var running = requestResult['running'];
+                if (running === true) {
+                    $("#targetStateHeader").html("Laser Activated");
+                    $("#targetStateBody").html("<p><img src=\"{{ url_for('static', filename='img/working.gif')}}\" width=\"64\" height=\"64\"> Laser activated - move to desired start position...</p>");
+                    $("#targetModalButton").html('<button class="btn btn-large btn-danger" type="button" id="targetButton" name="targetButton" onclick="stopTarget();">Stop</button></p>');
+                } else {
+                    $("#targetStateHeader").html("Laser Activation Failed");
+                    $("#targetStateBody").html('<div class="alert alert-error">Unable to start laser scanner</div>');
+                    $("#targetModalButton").html('<button class="btn btn-large btn-info" type="button" id="targetButton" name="targetButton" onclick="$(\'#scanModal\').modal(\'toggle\');">Ok</button></p>');
+                }
+            });
+        }
+        $("a#target").bind('click', startTarget);
+
+        stopTarget = function() {
+            var stoptargetRequest = $.ajax({
+                url:"/stoptarget",
+                type:"POST",
+                dataType:"json"
+            });
+            stoptargetRequest.fail(function() {
+                alert("Unable to stop scanner, please perform a system check.");
+            });
+            $("#targetModal").modal('toggle');
+        }
+
     </script>
 {% endblock %}

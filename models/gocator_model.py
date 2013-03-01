@@ -184,6 +184,15 @@ class GocatorModel(object):
                 stderr_fid.write(stderr)
             self.scanner_proc = None
 
+    def start_target(self):
+        """Starts the Gocator profiler in 'targeting' mode : allows user to align
+        the laser prior to the actual measurement"""
+        config_arg = "-c" + GocatorModel.ENCODERCONFIGPATH
+        self.scanner_proc = subprocess.Popen([GocatorModel.SCANNERPATH, config_arg, "-t"],
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+        return self.scanner_running
+
     def get_scanner_logs(self):
         """Returns the stdout, stderr log files (returns empty strings if not found)"""
         output_log = ""
@@ -219,18 +228,10 @@ class GocatorModel(object):
         canvas = FigureCanvas(figure)
         axes = figure.gca()
         x, y, z = np.genfromtxt(data_file, delimiter=",", unpack=True)
-        # TODO - uncomment following when scanner connected (filters bad Z readings from scanner)
-        xi = x[z!=-32.768]
-        yi = y[z!=-32.768]
-        zi = z[z!=-32.768]
-        # Experimental - use Wiener filter to smooth out data (had best overall results
-        # in lab tests with the Gocator)
-        try:
-            import scipy.signal
-            zi = scipy.signal.wiener(zi, mysize=15, noise=1)
-        except ImportError: # SciPy not available
-            pass
-        scatter_plt = axes.scatter(xi, yi, c=zi)
+        xi = x[z>-20]
+        yi = y[z>-20]
+        zi = z[z>-20]
+        scatter_plt = axes.scatter(xi, yi, c=zi, marker="+", cmap=cm.get_cmap("Set1"))
         axes.grid(True)
         axes.axis([np.min(xi), np.max(xi), np.min(yi), np.max(yi)])
         colorbar = figure.colorbar(scatter_plt)
