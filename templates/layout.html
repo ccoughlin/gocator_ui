@@ -11,14 +11,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-responsive.css') }}">
     <script src="{{ url_for('static', filename='js/jquery-1.9.0.min.js') }}"></script>
     <script async src="{{ url_for('static', filename='js/parsley.min.js') }}"></script>
-    {% with messages = get_flashed_messages() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="alert alert-block alert-info">
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            </div>
+            {% for category, message in messages %}
+                {% if category == "success" %}
+                    <div class="alert alert-block alert-success">
+                {% elif category == "error" %}
+                    <div class="alert alert-block alert-error">
+                {% else %}
+                    <div class="alert alert-block alert-info">
+                {% endif %}
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <p>{{ message }}</p>
+                    </div>
+            {% endfor %}
         {% endif %}
     {% endwith %}
 </head>
@@ -36,17 +42,6 @@
             <ul class="nav">
                 <li class="divider-vertical"></li>
                 <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                        Config
-                        <b class="caret"></b>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href="/trigger">Trigger</a></li>
-                        <li><a href="/encoder">Encoder</a></li>
-                    </ul>
-                </li>
-                <li class="divider-vertical"></li>
-                <li class="dropdown">
                     <a href="#" class="dropdown-toggle pull-right" data-toggle="dropdown">
                         Help
                         <b class="caret"></b>
@@ -55,6 +50,37 @@
                         <li><a href="/help">Help!</a></li>
                         <li><a href="/logs">View System Logs</a></li>
                         <li><a href="/tri">About TRI</a></li>
+                    </ul>
+                </li>
+                <li class="divider-vertical"></li>
+                
+
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                        Config
+                        <b class="caret"></b>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>{% if session.logged_in %}
+                                <a href="/logout">Logout</a>
+                            {% else %}
+                                <a href="/login">Login</a>
+                            {% endif %}
+                        </li>
+                        {% if session.logged_in %}
+                        <li>
+                        {% else %}
+                        <li class="disabled">
+                        {% endif %}
+                            <a href="/trigger">Trigger</a>
+                        </li>
+                        {% if session.logged_in %}
+                        <li>
+                        {% else %}
+                        <li class="disabled">
+                        {% endif %}
+                            <a href="/encoder">Encoder</a>
+                        </li>
                     </ul>
                 </li>
             </ul>

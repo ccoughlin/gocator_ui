@@ -4,21 +4,15 @@
 Chris R. Coughlin (TRI/Austin, Inc.)
 """
 
-from flask import Flask, flash, jsonify, render_template, request, session, url_for, redirect
+from flask import Flask, flash, g, jsonify, render_template, request, session, url_for, redirect
+from functools import wraps
 import os.path
 import os
 import tempfile
 from models import gocator_model
 
-BASEPATH = os.path.dirname(os.path.abspath(__file__))
-# Output path for generated plots
-OUTPUTIMAGEPATH = os.path.join(BASEPATH, 'static', 'data', 'img')
-# Output path for profile data
-OUTPUTDATAPATH = os.path.join(BASEPATH, 'static', 'data')
-
 app = Flask(__name__)
-# TODO - replace secret key on deployment
-app.secret_key = '\x96\x02\xd9\xd9q\xd25e\xf0\x83<\x90\xc1\xb8\xde\xa9\xaak\r\x81\x17c\xda\xfb'
+app.config.from_object('config')
 model = gocator_model.GocatorModel()
 
 def temp_fname(fldr, ext):
@@ -29,11 +23,20 @@ def temp_fname(fldr, ext):
 
 def temp_data_fname():
     """Returns a temporary filename for data files"""
-    return temp_fname(fldr=OUTPUTDATAPATH, ext=".csv")
+    return temp_fname(fldr=app.OUTPUTDATAPATH, ext=".csv")
 
 def temp_image_fname():
     """Returns a temporary filename for image files"""
-    return temp_fname(fldr=OUTPUTIMAGEPATH, ext=".png")
+    return temp_fname(fldr=app.OUTPUTIMAGEPATH, ext=".png")
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('logged_in', None) is None:
+            flash("Login required", "error")
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def index():
@@ -54,12 +57,13 @@ def trigger_config():
         trigger_dict['frame_rate'] = request.form['frame_rate']
     trigger_dict['enable_gate'] = request.form.get('use_gate', False)
     if model.set_configured_trigger(trigger_dict):
-        flash("Configuration successful.")
+        flash("Configuration successful", "success")
     else:
-        flash("Configuration failed.")
+        flash("Configuration failed", "error")
     return redirect(url_for('index'))
 
 @app.route('/trigger', methods=['GET'])
+@login_required
 def trigger():
     """View/edit current trigger config"""
     return render_template('trigger.html')
@@ -73,12 +77,13 @@ def encoder_config():
     encoder_dict['encoder_model'] = request.form.get('encoder_model', 'Make/model not specified')
     encoder_dict['encoder_resolution'] = request.form.get('encoder_resolution', 0)
     if model.set_configured_encoder(encoder_dict):
-        flash("Configuration successful.")
+        flash("Configuration successful", "success")
     else:
-        flash("Configuration failed.")
+        flash("Configuration failed", "failed")
     return redirect(url_for('index'))
 
 @app.route('/encoder', methods=['GET'])
+@login_required
 def encoder():
     """View/edit current encoder config"""
     return render_template('encoder.html')
@@ -93,7 +98,7 @@ def logs():
 def clearlogs():
     """Erases the current output and error logs"""
     model.clear_scanner_logs()
-    flash("Logs cleared.")
+    flash("Logs cleared")
     return redirect(url_for('index'))
 
 @app.route('/help', methods=['GET'])
@@ -141,10 +146,30 @@ def stoptarget():
     response = {"running":False}
     return jsonify(response)
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Handles user login"""
+    error = None
+    if request.method == 'POST':
+        if request.form['user'] != app.config['USERNAME'] or request.form['pword'] != app.config['PASSWORD']:
+            error = "Invalid login"
+        else:
+            session['logged_in'] = True
+            flash("Login successful", "success")
+            return redirect(url_for('index'))
+    return render_template('login.html', error=error)
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    """Handles user logout"""
+    session.pop('logged_in', None)
+    flash("Logout successful", "success")
+    return redirect(url_for('index'))
+
 def main():
     # TODO - replace debugging on deployment
-    #app.run(debug=True)
-    app.run(host='0.0.0.0')
+    app.run(debug=True)
+    #app.run(host='0.0.0.0')
 
 if __name__ == '__main__':
     main()

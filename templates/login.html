@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %} Gocator Login {% endblock %}
+{% block content %}
+{% if error %}
+    <div class="alert alert-error">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong>Error:</strong> {{ error }}
+    </div>
+{% endif %}
+<form class="form" method="POST" action="/login" id="loginForm" data-validate="parsley">
+    <div class="control-group">
+        <label for="user">User</label>
+        <input type="text" id="user" name="user" data-required="true" />
+    </div>
+    <div class="control-group">
+        <label for"pword">Password</label>
+        <input type="password" id="pword" name="pword" data-required="true" />
+    </div>
+    <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="button" class="btn" onclick="window.location.replace('/');">Cancel</button>
+    </div>
+</form>
+    
+{% endblock %}

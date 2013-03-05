@@ -1,2 +1,4 @@
 scanResults.*
 Go2System_*
+*.csv
+config.py
