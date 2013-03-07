@@ -79,16 +79,21 @@
                 var response = JSON.parse(stopscanRequest.responseText);
                 var linkToPlot;
                 var linkToData;
-                $("#scanResults").html('<div class="alert alert-success">Scan Complete!</div>');
-                if ($("#get_plot").is(":checked")) {
-                    linkToPlot = '<a target="_blank" href="' + response['image'] + '">Get Profile Plot</a>';
-                    $("#scanResults").append('<p>' + linkToPlot + '</p>');
+                var errorMessage = response['error'];
+                if (!errorMessage) {
+                    $("#scanResults").html('<div class="alert alert-success">Scan Complete!</div>');
+                    if ($("#get_plot").is(":checked")) {
+                        linkToPlot = '<a target="_blank" href="' + response['image'] + '">Get Profile Plot</a>';
+                        $("#scanResults").append('<p>' + linkToPlot + '</p>');
+                    }
+                    if ($("#get_data").is(":checked")) {
+                        linkToData = '<a target="_blank" href="' + response['data'] + '">Get Profile Data</a>';
+                        $("#scanResults").append('<p>' + linkToData + '</p>');
+                    }
+                } else {
+                    $("#scanResults").html('<div class="alert alert-error">Scan Complete (With Errors)</div>');
+                    $("#scanResults").append('<p>Unable to process scan results, error was <strong>' + errorMessage + '</strong></p>');
                 }
-                if ($("#get_data").is(":checked")) {
-                    linkToData = '<a target="_blank" href="' + response['data'] + '">Get Profile Data</a>';
-                    $("#scanResults").append('<p>' + linkToData + '</p>');
-                }
-
             });
             stopscanRequest.fail(function() {
                 alert("Unable to stop scanner, please perform a system check.");

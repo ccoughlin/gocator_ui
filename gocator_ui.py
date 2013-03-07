@@ -24,11 +24,11 @@ def temp_fname(fldr, ext):
 
 def temp_data_fname():
     """Returns a temporary filename for data files"""
-    return temp_fname(fldr=app.OUTPUTDATAPATH, ext=".csv")
+    return temp_fname(fldr=app.config['OUTPUTDATAPATH'], ext=".csv")
 
 def temp_image_fname():
     """Returns a temporary filename for image files"""
-    return temp_fname(fldr=app.OUTPUTIMAGEPATH, ext=".png")
+    return temp_fname(fldr=app.config['OUTPUTIMAGEPATH'], ext=".png")
 
 def login_required(f):
     @wraps(f)
@@ -133,13 +133,18 @@ def scan():
 @app.route('/stopscan', methods=['POST'])
 def stopscan():
     """Stops profiling.  Returns JSON data with URLs for the raw data and a PNG plot of same."""
-    model.stop_scanner()
-    if session['get_plot'] == 'true':
-        model.profile(session['data_path'], session['image_path'])
-    response = {"scanning":False,
-                "image":url_for('static', filename='data/img/{0}'.format(os.path.basename(session['image_path']))),
-                "data":url_for('static', filename='data/{0}'.format(os.path.basename(session['data_path'])))}
-    return jsonify(response)
+    try:
+        model.stop_scanner()
+        if session['get_plot'] == 'true':
+            model.profile(session['data_path'], session['image_path'])
+        response = {"scanning":False,
+                    "image":url_for('static', filename='data/img/{0}'.format(os.path.basename(session['image_path']))),
+                    "data":url_for('static', filename='data/{0}'.format(os.path.basename(session['data_path'])))}
+    except IOError: # no data recorded
+        response = {"scanning":False,
+                    "error":"No profile data recorded"}
+    finally:    
+        return jsonify(response)
 
 @app.route('/target', methods=['POST'])
 def target():

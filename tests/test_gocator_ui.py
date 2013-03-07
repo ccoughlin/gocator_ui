@@ -123,5 +123,40 @@ class TestGocatorUI(unittest.TestCase):
         rv = self.app.get(rv.data)
         self.assertTrue("Configuration successful" in rv.data)
 
+    def test_logs(self):
+        """Verify returning/clearing the application logs"""
+        rv = self.app.get('/logs')
+        self.assertTrue("System Logs" in rv.data)
+        rv = self.app.get('/clearlogs', follow_redirects=True)
+        self.assertTrue("Logs cleared" in rv.data)
+
+    def test_get_info(self):
+        """Verify returning static information pages"""
+        rv = self.app.get('/help')
+        self.assertTrue("Help" in rv.data)
+        rv = self.app.get('/tri')
+        self.assertTrue("http://www.tri-austin.com" in rv.data)
+
+    def test_scan(self):
+        """Verify starting and stopping the scanner"""
+        # Should return an error message - no data to plot
+        rv = self.app.post("/scan", data=dict(get_plot="true", get_data="true"))
+        response_dict = json.loads(rv.data)
+        self.assertTrue(response_dict['scanning'])
+        rv = self.app.post("/stopscan")
+        response_dict = json.loads(rv.data)
+        self.assertFalse(response_dict['scanning'])
+        self.assertTrue(response_dict.has_key('error'))
+        # Should be clean
+        rv = self.app.post("/scan", data=dict(get_plot="false", get_data="true"))
+        response_dict = json.loads(rv.data)
+        self.assertTrue(response_dict['scanning'])
+        rv = self.app.post("/stopscan")
+        response_dict = json.loads(rv.data)
+        self.assertFalse(response_dict['scanning'])
+        self.assertFalse(response_dict.has_key('error'))
+        self.assertTrue(response_dict.has_key('image'))
+        self.assertTrue(response_dict.has_key('data'))
+
 if __name__ == "__main__":
     unittest.main()
