@@ -1,0 +1,127 @@
+"""test_gocator_ui.py - tests the gocator_ui module
+
+Chris R. Coughlin (TRI/Austin, Inc.)
+"""
+
+import json
+import os
+import sys
+import gocator_ui
+from models import gocator_model
+from models.configobj import ConfigObj
+import flask
+import unittest
+
+class TestGocatorUI(unittest.TestCase):
+    """Tests the Gocator UI"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Stores current system configuration for restoration"""
+        cls._original_cfg = ConfigObj(gocator_model.GocatorModel.ENCODERCONFIGPATH)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restores system's original configuration"""
+        cls._original_cfg.write()
+
+    def setUp(self):
+        gocator_ui.app.config['TESTING'] = True
+        self.app = gocator_ui.app.test_client()
+        self.gocator_model = gocator_model.GocatorModel()
+
+    def tearDown(self):
+        self.logout()
+
+    def remove_file(self, file_name):
+        """Helper function to delete file_name--swallows the WindowsError exception 
+        Windows throws if file is in use."""
+        if os.path.exists(file_name):
+            if sys.platform.startswith('win32'):
+                try:
+                    os.remove(file_name)
+                except WindowsError: 
+                    pass
+            os.remove(file_name)
+
+    def test_temp_fnames(self):
+        """Verify returning temporary filenames"""
+        fldr = os.path.join(os.path.dirname(__file__), "support_files")
+        temp_file = gocator_ui.temp_fname(fldr, ".txt")
+        self.assertEqual(os.path.dirname(temp_file), fldr)
+        self.assertTrue(temp_file.endswith('.txt'))
+        self.remove_file(temp_file)
+
+    def login(self, username, password):
+        """Helper function to log in to the admin sections of the site"""
+        return self.app.post('/login', data=dict(user=username,
+                                                 pword=password),
+                             follow_redirects=True)
+
+    def admin_login(self):
+        """Helper function to log in as admin"""
+        return self.login(gocator_ui.app.config['USERNAME'], gocator_ui.app.config['PASSWORD'])
+
+    def logout(self):
+        return self.app.get('/logout', follow_redirects=True)
+
+    def test_good_login_logout(self):
+        """Verify logging in and out of site"""
+        rv = self.admin_login()
+        self.assertTrue("Login successful" in rv.data)
+        rv = self.logout()
+        self.assertTrue("Logout successful" in rv.data)
+
+    def test_bad_login_logout(self):
+        """Verify rejecting bad logins"""
+        rv = self.login(gocator_ui.app.config['USERNAME'], "")
+        self.assertTrue("Invalid login" in rv.data)
+        rv = self.login("", gocator_ui.app.config['PASSWORD'])
+        self.assertTrue("Invalid login" in rv.data)
+
+    def test_trigger_form(self):
+        """Verify the configure trigger form works"""
+        rv = self.app.get('/trigger', follow_redirects=True)
+        self.assertTrue("Login required" in rv.data)
+        self.admin_login()
+        rv = self.app.get('/trigger', follow_redirects=True)
+        self.assertTrue("Configure Triggering" in rv.data)
+
+    def test_encoder_form(self):
+        """Verify the configure encoder form works"""
+        rv = self.app.get('/encoder', follow_redirects=True)
+        self.assertTrue("Login required" in rv.data)
+        self.admin_login()
+        rv = self.app.get('/encoder', follow_redirects=True)
+        self.assertTrue("Configure Encoder" in rv.data)
+
+    def test_trigger_config(self):
+        """Verify reading/writing the trigger configuration"""
+        self.admin_login()
+        rv = self.app.get('/trigger_config')
+        trig_dict = json.loads(rv.data)
+        self.assertDictEqual(self.gocator_model.get_configured_trigger(), trig_dict)
+        trig_dict = self.gocator_model.get_sane_trigger()
+        form_data = json.dumps({'triggertype':trig_dict['type'], 
+                                'travel_threshold':trig_dict['travel_threshold'],
+                                'travel_direction':trig_dict['travel_direction'],
+                                'frame_rate':trig_dict['frame_rate'],
+                                'use_gate':trig_dict['enable_gate']
+                    })
+        rv = self.app.post('/trigger_config', data=form_data, content_type="application/json")
+        rv = self.app.get(rv.data)
+        self.assertTrue("Configuration successful" in rv.data)
+
+    def test_encoder_config(self):
+        """Verify reading/writing the encoder configuration"""
+        self.admin_login()
+        rv = self.app.get('/encoder_config')
+        encoder_dict = json.loads(rv.data)
+        self.assertDictEqual(self.gocator_model.get_configured_encoder(), encoder_dict)
+        encoder_dict = json.dumps(self.gocator_model.get_sane_encoder())
+        rv = self.app.post('/encoder_config', data=encoder_dict, content_type="application/json")
+        rv = self.app.get(rv.data)
+        self.assertTrue("Configuration successful" in rv.data)
+
+if __name__ == "__main__":
+    unittest.main()

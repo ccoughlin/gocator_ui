@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %} Configure Encoder {% endblock %}
 {% block content %}
-    <form class="form" method="POST" action="/encoder_config" id="triggerConfigForm" data-validate="parsley">
+    <form class="form" method="POST" id="encoderConfigForm" data-validate="parsley">
         <div class="control-group">
             <label class="control-label" for="encoder_model">Encoder Model</label>
             <input type="text" id="encoder_model" name="encoder_model">
@@ -38,7 +38,18 @@
                 $("#encoder_resolution").val(encoderResolution);
             });
             configRequest.fail(function() {
-                console.log("whoops");
+                alert("Unable to load encoder configuration.");
+            });
+        });
+
+        $("#encoderConfigForm").submit(function(event) {
+            event.preventDefault();
+            var response = $.post("/encoder_config", $("#encoderConfigForm").serialize());
+            response.done(function(data) {
+                window.location = data;
+            });
+            response.fail(function(data) {
+                alert("Unable to set encoder configuration.");
             });
         });
     </script>

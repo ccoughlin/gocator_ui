@@ -6,6 +6,7 @@ Chris R. Coughlin (TRI/Austin, Inc.)
 
 from flask import Flask, flash, g, jsonify, render_template, request, session, url_for, redirect
 from functools import wraps
+import json
 import os.path
 import os
 import tempfile
@@ -49,18 +50,22 @@ def trigger_config():
     if request.method == 'GET':
         return jsonify(model.get_configured_trigger())
     trigger_dict = model.get_sane_trigger()
-    trigger_dict['type'] = request.form['triggertype']
+    if not request.content_type == 'application/json':
+        trig_cfg = request.form
+    else:
+        trig_cfg = json.loads(request.data)
+    trigger_dict['type'] = trig_cfg['triggertype']
     if trigger_dict['type'] == 'Encoder':
-        trigger_dict['travel_threshold'] = request.form['travel_threshold']
-        trigger_dict['travel_direction'] = request.form['travel_direction']
+        trigger_dict['travel_threshold'] = trig_cfg['travel_threshold']
+        trigger_dict['travel_direction'] = trig_cfg['travel_direction']
     elif trigger_dict['type'] == 'Time':
-        trigger_dict['frame_rate'] = request.form['frame_rate']
-    trigger_dict['enable_gate'] = request.form.get('use_gate', False)
+        trigger_dict['frame_rate'] = trig_cfg['frame_rate']
+    trigger_dict['enable_gate'] = trig_cfg.get('use_gate', False)
     if model.set_configured_trigger(trigger_dict):
         flash("Configuration successful", "success")
     else:
         flash("Configuration failed", "error")
-    return redirect(url_for('index'))
+    return url_for('index')
 
 @app.route('/trigger', methods=['GET'])
 @login_required
@@ -74,13 +79,17 @@ def encoder_config():
     if request.method == 'GET':
         return jsonify(model.get_configured_encoder())
     encoder_dict = model.get_sane_encoder()
-    encoder_dict['encoder_model'] = request.form.get('encoder_model', 'Make/model not specified')
-    encoder_dict['encoder_resolution'] = request.form.get('encoder_resolution', 0)
+    if not request.content_type == 'application/json':
+        encoder_cfg = request.form
+    else:
+        encoder_cfg = json.loads(request.data)
+    encoder_dict['encoder_model'] = encoder_cfg.get('encoder_model', 'Make/model not specified')
+    encoder_dict['encoder_resolution'] = encoder_cfg.get('encoder_resolution', 0)
     if model.set_configured_encoder(encoder_dict):
         flash("Configuration successful", "success")
     else:
         flash("Configuration failed", "failed")
-    return redirect(url_for('index'))
+    return url_for('index')
 
 @app.route('/encoder', methods=['GET'])
 @login_required
@@ -114,7 +123,6 @@ def tri():
 @app.route('/scan', methods=['POST'])
 def scan():
     """Initiate profiling"""
-    # TODO - refactor to skip returning plot and/or data if not set
     session['get_plot'] = request.form.get('get_plot', 'false').lower() 
     session['get_data'] = request.form.get('get_data', 'true').lower() 
     session['data_path'] = temp_data_fname()
@@ -167,9 +175,7 @@ def logout():
     return redirect(url_for('index'))
 
 def main():
-    # TODO - replace debugging on deployment
-    app.run(debug=True)
-    #app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0')
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %} Configure Triggering {% endblock %}
 {% block content %}
-    <form class="form" method="POST" action="/trigger_config" id="triggerConfigForm" data-validate="parsley">
+    <form class="form" method="POST" id="triggerConfigForm" data-validate="parsley">
         <div class="control-group">
             <label class="control-label" for="triggertype">Type Of Trigger</label>
             <select id="triggertype" name="triggertype">
@@ -76,7 +76,7 @@
                 $("#travel_direction").val(triggerTravelDirection);
             });
             configRequest.fail(function() {
-                console.log("whoops");
+                alert("Unable to load trigger configuration.");
             });
         });
 
@@ -126,5 +126,16 @@
                 $("#triggertype_help").html("Trigger on digital input reading");
             }
         }
+
+        $("#triggerConfigForm").submit(function(event) {
+            event.preventDefault();
+            var response = $.post("/trigger_config", $("#triggerConfigForm").serialize());
+            response.done(function(data) {
+                window.location = data;
+            });
+            response.fail(function(data) {
+                alert("Unable to set trigger configuration.");
+            });
+        });
     </script>
 {% endblock %}
