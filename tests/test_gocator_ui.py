@@ -158,5 +158,14 @@ class TestGocatorUI(unittest.TestCase):
         self.assertTrue(response_dict.has_key('image'))
         self.assertTrue(response_dict.has_key('data'))
 
+    def test_target(self):
+        """Verify starting and stopping the scanner in targeting mode"""
+        rv = self.app.post("/target")
+        response_dict = json.loads(rv.data)
+        self.assertTrue(response_dict['running'])
+        rv = self.app.post("/stoptarget")
+        response_dict = json.loads(rv.data)
+        self.assertFalse(response_dict['running'])
+
 if __name__ == "__main__":
     unittest.main()
