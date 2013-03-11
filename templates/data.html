@@ -7,17 +7,13 @@
             <tr>
                 <th>Data File</th>
                 <th>Date Recorded</th>
-                <th>Comments (If Any)</th>
             </tr>
         </thead>
         <tbody>
-            {% for data_file, record_date, comment in datafiles %}
+            {% for data_file, record_date in datafiles %}
             <tr>
                 <td><a href="{{ url_for('static', filename="data/%s"|format(data_file)) }}" target="_blank">{{ data_file }}</a></td>
                 <td>{{ record_date }}</td>
-                <td>{% if comment is not none %}
-                    {{ comment }}
-                    {% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>

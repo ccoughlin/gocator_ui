@@ -194,21 +194,10 @@ def data():
     """Generates list of stored scans"""
     data_files = list_data_files()
     table_data = []
-    def get_comment(filename):
-        """Returns the comment line from a data file, or None if not found."""
-        with open(filename, "rb") as fidin:
-            for line in fidin:
-                if not line.startswith("#"):
-                    return None
-                else:
-                    if "Comments:" in line:
-                        return line[line.find("Comments:")+len("Comments:"):]
-        return None
     for data_file in data_files:
         file_path = os.path.join(app.config["OUTPUTDATAPATH"], data_file)
         mod_date = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-        comment = get_comment(file_path)
-        table_data.append((data_file, mod_date, comment))
+        table_data.append((data_file, mod_date))
     return render_template('data.html', datafiles=table_data)
 
 @app.route('/cleardata', methods=['GET'])
