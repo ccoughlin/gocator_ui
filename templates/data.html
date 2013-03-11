@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block title %} Data {% endblock %}
+{% block content %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Data File</th>
+            <th>Date Recorded</th>
+            <th>Comments (If Any)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for data_file, record_date, comment in datafiles %}
+        <tr>
+            <td><a href="{{ url_for('static', filename="data/%s"|format(data_file)) }}" target="_blank">{{ data_file }}</a></td>
+            <td>{{ record_date }}</td>
+            <td>{% if comment is not none %}
+                {{ comment }}
+                {% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if session.logged_in %}
+    <p><a href="/cleardata" class="btn btn-warning" role="btn">Clear Data</a></p>
+{% endif %}
+{% endblock %}

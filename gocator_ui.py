@@ -5,6 +5,7 @@ Chris R. Coughlin (TRI/Austin, Inc.)
 """
 
 from flask import Flask, flash, g, jsonify, render_template, request, session, url_for, redirect
+import datetime
 from functools import wraps
 import json
 import os.path
@@ -29,6 +30,14 @@ def temp_data_fname():
 def temp_image_fname():
     """Returns a temporary filename for image files"""
     return temp_fname(fldr=app.config['OUTPUTIMAGEPATH'], ext=".png")
+
+def list_data_files():
+    """Returns a list of the CSV files currently on the controller"""
+    return [fname for fname in os.listdir(app.config['OUTPUTDATAPATH']) if fname.endswith("csv")]
+
+def list_plot_files():
+    """Returns a list of the bitmap plot files currently on the controller"""
+    return [fname for fname in os.listdir(app.config['OUTPUTIMAGEPATH']) if fname.endswith("png")]
 
 def login_required(f):
     @wraps(f)
@@ -104,6 +113,7 @@ def logs():
     return render_template('logs.html', output_log=output_log, error_log=error_log)
 
 @app.route('/clearlogs', methods=['GET'])
+@login_required
 def clearlogs():
     """Erases the current output and error logs"""
     model.clear_scanner_logs()
@@ -178,6 +188,45 @@ def logout():
     session.pop('logged_in', None)
     flash("Logout successful", "success")
     return redirect(url_for('index'))
+
+@app.route('/data', methods=['GET'])
+def data():
+    """Generates list of stored scans"""
+    data_files = list_data_files()
+    table_data = []
+    def get_comment(filename):
+        """Returns the comment line from a data file, or None if not found."""
+        with open(filename, "rb") as fidin:
+            for line in fidin:
+                if not line.startswith("#"):
+                    return None
+                else:
+                    if "Comments:" in line:
+                        return line[line.find("Comments:")+len("Comments:"):]
+        return None
+    for data_file in data_files:
+        file_path = os.path.join(app.config["OUTPUTDATAPATH"], data_file)
+        mod_date = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+        comment = get_comment(file_path)
+        table_data.append((data_file, mod_date, comment))
+    return render_template('data.html', datafiles=table_data)
+
+@app.route('/cleardata', methods=['GET'])
+@login_required
+def cleardata():
+    """Erases the data files"""
+    data_files = list_data_files()
+    plot_files = list_plot_files()
+    try:
+        for fname in data_files:
+            os.remove(os.path.join(app.config['OUTPUTDATAPATH'], fname))
+        for fname in plot_files:
+            os.remove(os.path.join(app.config['OUTPUTIMAGEPATH'], fname))
+        flash("Data Erased", "success")
+    except OSError as err: #Couldn't remove files
+        flash("Unable to remove data files: {0}".format(err), "failed")
+    finally:
+        return redirect(url_for('index'))
 
 def main():
     app.run(host='0.0.0.0')

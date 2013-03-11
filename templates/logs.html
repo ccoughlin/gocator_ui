@@ -24,6 +24,7 @@
             <p>No error log available.</p>
         {% endif %}
     </section>
-
+    {% if session.logged_in %}
     <p><a href="/clearlogs" class="btn btn-warning" role="btn">Clear Logs</a></p>
+    {% endif %}
 {% endblock %}

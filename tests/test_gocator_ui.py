@@ -52,6 +52,15 @@ class TestGocatorUI(unittest.TestCase):
         self.assertTrue(temp_file.endswith('.txt'))
         self.remove_file(temp_file)
 
+    def test_list_output(self):
+        """Verify returning a list of stored data and plot files"""
+        data_folder = gocator_ui.app.config['OUTPUTDATAPATH']
+        plot_folder = os.path.join(data_folder, "img")
+        expected_data_files = [fname for fname in os.listdir(data_folder) if fname.endswith("csv")]
+        expected_plot_files = [fname for fname in os.listdir(plot_folder) if fname.endswith("png")]
+        self.assertListEqual(expected_data_files, gocator_ui.list_data_files())
+        self.assertListEqual(expected_plot_files, gocator_ui.list_plot_files())
+
     def login(self, username, password):
         """Helper function to log in to the admin sections of the site"""
         return self.app.post('/login', data=dict(user=username,
@@ -128,6 +137,9 @@ class TestGocatorUI(unittest.TestCase):
         rv = self.app.get('/logs')
         self.assertTrue("System Logs" in rv.data)
         rv = self.app.get('/clearlogs', follow_redirects=True)
+        self.assertTrue("Login required" in rv.data)
+        self.admin_login()
+        rv = self.app.get('/clearlogs', follow_redirects=True)
         self.assertTrue("Logs cleared" in rv.data)
 
     def test_get_info(self):
@@ -166,6 +178,22 @@ class TestGocatorUI(unittest.TestCase):
         rv = self.app.post("/stoptarget")
         response_dict = json.loads(rv.data)
         self.assertFalse(response_dict['running'])
+
+    def test_data(self):
+        """Verify returning a list of stored data and clearing it"""
+        rv = self.app.get("/data")
+        self.assertTrue("Data" in rv.data)
+        data_files = os.listdir(gocator_ui.app.config['OUTPUTDATAPATH'])
+        for data_file in data_files:
+            if data_file.endswith("csv"):
+                self.assertTrue(os.path.basename(data_file) in rv.data)
+        rv = self.app.get('/cleardata', follow_redirects=True)
+        self.assertTrue("Login required" in rv.data)
+        self.admin_login()
+        rv = self.app.get('/cleardata', follow_redirects=True)
+        self.assertTrue("Data Erased" in rv.data)
+        self.assertEqual(len(gocator_ui.list_data_files()), 0)
+        self.assertEqual(len(gocator_ui.list_plot_files()), 0)
 
 if __name__ == "__main__":
     unittest.main()
