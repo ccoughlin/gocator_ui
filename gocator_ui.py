@@ -11,6 +11,7 @@ import json
 import os.path
 import os
 import tempfile
+from zipfile import ZipFile
 from models import gocator_model
 
 app = Flask(__name__)
@@ -199,6 +200,20 @@ def data():
         mod_date = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
         table_data.append((data_file, mod_date))
     return render_template('data.html', datafiles=table_data)
+
+@app.route('/dnld_data', methods=['POST'])
+def download_data():
+    """Creates ZIP archive of all the data"""
+    data_files = list_data_files()
+    zip_fname = os.path.join(app.config['OUTPUTDATAPATH'], "scans.zip")
+    with ZipFile(zip_fname, 'w') as output_zip:
+        for data_file in data_files:
+            file_path = os.path.join(app.config["OUTPUTDATAPATH"], data_file)
+            output_zip.write(file_path, arcname=os.path.basename(file_path))
+        response = {'url':os.path.relpath(zip_fname, app.config['BASEPATH'])}
+        return jsonify(response)
+    response = {'error':"Unable to create ZIP archive"}
+    return jsonify(response)
 
 @app.route('/cleardata', methods=['GET'])
 @login_required

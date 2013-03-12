@@ -18,9 +18,37 @@
             {% endfor %}
         </tbody>
     </table>
+    <p>
+        <a href="#" class="btn" role="btn btn-inverse" id="getzip" name="getzip">Create ZIP Archive</a>
+        <span id="DownloadZIP" name="DownloadZIP"></span>
+    </p>
     {% if session.logged_in %}
         <p><a href="/cleardata" class="btn btn-warning" role="btn">Clear Data</a></p>
     {% endif %}
+    <script type="text/javascript">
+        getZIP = function() {
+            var zipRequest = $.ajax({
+                url:"/dnld_data",
+                type:"POST",
+                dataType:"json"
+            });
+            zipRequest.done(function() {
+                var requestResult = JSON.parse(zipRequest.responseText);
+                
+                var requestError = requestResult['error'];
+                if (!requestError) {
+                    zipURL = ' <a target="_blank" href="' + requestResult['url'] + '">Download Data Archive</a>';
+                    $("#DownloadZIP").append(zipURL);
+                } else {
+                    $("#DownloadZIP").append("Error: " + requestError);
+                }
+            });
+            zipRequest.fail(function() {
+                alert("Unable to create archive, please perform a system check.");
+            });
+        }
+        $("a#getzip").bind('click', getZIP);
+    </script>
 {% else %}
     <p>No data files available.</p>
 {% endif %}

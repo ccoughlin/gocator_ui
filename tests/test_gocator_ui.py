@@ -195,5 +195,16 @@ class TestGocatorUI(unittest.TestCase):
         self.assertEqual(len(gocator_ui.list_data_files()), 0)
         self.assertEqual(len(gocator_ui.list_plot_files()), 0)
 
+    def test_dnld_data(self):
+        """Verify returning a URL to a ZIP of the stored data contents"""
+        rv = self.app.post("/dnld_data")
+        response_dict = json.loads(rv.data)
+        if 'url' in response_dict:
+            # TODO - check integrity of returned ZIP.  For now just
+            # make sure a URL to a file is returned.
+            self.assertTrue("scans.zip" in response_dict['url'])
+        else:
+            self.assertTrue('error' in response_dict)
+
 if __name__ == "__main__":
     unittest.main()
