@@ -17,6 +17,12 @@
                 </label>
             </div>
         </div>
+        <div class="control-group">
+            <div class="controls">
+                <label for="scan_comments">Scan Comments</label>
+                <input id="scan_comments" name="scan_comments" type="text" placeholder="Defaults to current date and time">
+            </div>
+        </div>
     </form>
     <a href="#targetModal" class="btn btn-large btn-inverse" role="button" id="target" name="target" data-toggle="modal">Align Laser</a>
     <a href="#scanModal" class="btn btn-large btn-primary" role="button" id="record" name="record" data-toggle="modal">Scan</a>
@@ -40,10 +46,17 @@
     </div>
     <p><div id="scanResults" name="scanResults"></div></p>
     <script type="text/javascript">
+        $(document).ready(function() {
+            $("#scan_comments").val("");
+        })
+
         startScan = function() {
+            if (!$("#scan_comments").val()) {
+                $("#scan_comments").val("Scan initiated " + new Date());
+            }
             $("#scanResults").html('');
             var scanConfigSettings = {"get_plot":$("#get_plot").is(":checked"),
-                "get_data":$("#get_data").is(":checked")};
+                "get_data":$("#get_data").is(":checked"), "scan_comments":$("#scan_comments").val()};
             var scanRequest = $.ajax({
                 url:"/scan",
                 type:"POST",

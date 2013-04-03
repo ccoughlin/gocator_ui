@@ -160,13 +160,18 @@ class GocatorModel(object):
         except IOError: # config file doesn't exist
             return False
 
-    def start_scanner(self, output_file):
+    def start_scanner(self, output_file, scan_comments=None):
         """Starts the Gocator profiler, saves data to specified output file.
+        If scan_comments is provided, it will be added to the scan output's header.
         Returns True if the scanning process was successfully started."""
         config_arg = "-c" + GocatorModel.ENCODERCONFIGPATH
         output_arg = "-o" + output_file
-        self.scanner_proc = subprocess.Popen([GocatorModel.SCANNERPATH, config_arg, output_arg],
-                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        process_list = [GocatorModel.SCANNERPATH, config_arg, output_arg]
+        if scan_comments:
+            process_list.append("-m" + scan_comments)
+        self.scanner_proc = subprocess.Popen(process_list,
+                                        stdin=subprocess.PIPE, 
+                                        stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
         return self.scanner_running
 

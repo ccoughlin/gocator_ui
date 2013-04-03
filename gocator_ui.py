@@ -136,9 +136,10 @@ def scan():
     """Initiate profiling"""
     session['get_plot'] = request.form.get('get_plot', 'false').lower() 
     session['get_data'] = request.form.get('get_data', 'true').lower() 
+    scan_comments = request.form.get('scan_comments', None)
     session['data_path'] = temp_data_fname()
     session['image_path'] = temp_image_fname()
-    response = {"scanning":model.start_scanner(session['data_path'])}
+    response = {"scanning":model.start_scanner(session['data_path'], scan_comments)}
     return jsonify(response)
 
 @app.route('/stopscan', methods=['POST'])
