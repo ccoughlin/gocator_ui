@@ -168,7 +168,7 @@ class GocatorModel(object):
         output_arg = "-o" + output_file
         process_list = [GocatorModel.SCANNERPATH, config_arg, output_arg]
         if scan_comments:
-            message_arg = '-m "' + scan_comments + '"'
+            message_arg = '-m"' + scan_comments + '"'
             process_list.append(message_arg)
         self.scanner_proc = subprocess.Popen(process_list,
                                         stdin=subprocess.PIPE, 
