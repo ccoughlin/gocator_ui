@@ -164,11 +164,11 @@ class GocatorModel(object):
         """Starts the Gocator profiler, saves data to specified output file.
         If scan_comments is provided, it will be added to the scan output's header.
         Returns True if the scanning process was successfully started."""
-        config_arg = "-c" + GocatorModel.ENCODERCONFIGPATH
-        output_arg = "-o" + output_file
+        config_arg = "-c{0}".format(GocatorModel.ENCODERCONFIGPATH)
+        output_arg = "-o{0}".format(output_file)
         process_list = [GocatorModel.SCANNERPATH, config_arg, output_arg]
         if scan_comments:
-            message_arg = '-m"' + scan_comments + '"'
+            message_arg = "-m{0}".format(scan_comments)
             process_list.append(message_arg)
         self.scanner_proc = subprocess.Popen(process_list,
                                         stdin=subprocess.PIPE, 
