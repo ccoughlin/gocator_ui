@@ -11,3 +11,4 @@ The web interface allows the user to configure the laser profiling (triggering, 
 * [matplotlib](http://www.matplotlib.org)
 * [Flask](http://flask.pocoo.org/)
 * [gocator_profiler](https://github.com/ccoughlin/gocator_profiler)
+* [Tornado](http://www.tornadoweb.org/en/stable/) (optional but recommended)
